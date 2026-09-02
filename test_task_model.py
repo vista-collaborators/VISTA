@@ -19,7 +19,6 @@ from vista.utils import (
     parse_bool_arg,
     parse_int_list,
     parse_str_list,
-    read_json,
     torch_load,
     write_json,
 )
@@ -67,6 +66,15 @@ def saved_config_from_checkpoint(path: str) -> Dict[str, Any]:
     return dict(checkpoint["config"])
 
 
+def default_output_dir_for_checkpoint(checkpoint_path: str, timestamp: str) -> str:
+    checkpoint = Path(checkpoint_path)
+    if checkpoint.parent.name == "models":
+        experiment_dir = checkpoint.parent.parent
+    else:
+        experiment_dir = checkpoint.parent
+    return os.path.join(str(experiment_dir), "reports", f"manual_test_{timestamp}")
+
+
 def main() -> None:
     args = parse_configured_args(build_parser)
     if not args.checkpoint:
@@ -100,11 +108,7 @@ def main() -> None:
     )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = args.output_dir or os.path.join(
-        str(Path(args.checkpoint).resolve().parents[1]),
-        "reports",
-        f"manual_test_{timestamp}",
-    )
+    output_dir = args.output_dir or default_output_dir_for_checkpoint(args.checkpoint, timestamp)
     overrides: Dict[str, Any] = {
         "task": task,
         "class_names": class_names,

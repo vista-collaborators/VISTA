@@ -28,6 +28,7 @@ live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
 ├── test_task_model.py
 ├── scripts/
 ├── src/vista/
+├── third_party/dinov3/
 ├── tools/
 └── weights/
 ```
@@ -43,34 +44,39 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-DINOv3 is an external dependency. Install it into the same environment:
+This repository vendors the filtered DINOv3 backbone runtime under
+`third_party/dinov3`, so users do not need to clone DINOv3 separately for VISTA
+training or testing.
+
+If you want to compare against a full upstream DINOv3 checkout instead of the
+vendored runtime, use:
 
 ```bash
 bash scripts/install_dinov3.sh
 ```
 
-The script clones `https://github.com/facebookresearch/dinov3.git` into
-`external/dinov3` and runs `pip install -e external/dinov3`. If you already have
-DINOv3 locally, you can use:
+The normal VISTA workflow does not require this optional step.
 
-```bash
-pip install -e /path/to/dinov3
-```
-
-After DINOv3 is installed, `--dinov3_hub_repo` may be left empty. You can still
-pass a local repo path explicitly when you prefer torch hub loading.
+The vendored DINOv3 code is distributed under its own license; see
+`third_party/dinov3/licenses/DINOV3_LICENSE.md`.
 
 ## Weights
 
-No weights are included. Config files intentionally leave these fields blank:
+No weights are included. Config files intentionally leave weight fields blank:
 
 ```yaml
-dinov3_hub_repo: ""
 dinov3_weights: ""
 checkpoint: ""
 ```
 
-At runtime, pass your local continued-pretraining DINOv3 backbone:
+The provided configs use the relative vendored path:
+
+```yaml
+dinov3_hub_repo: third_party/dinov3
+```
+
+At runtime, place your local continued-pretraining DINOv3 backbone under
+`weights/dinov3/` or pass another relative path:
 
 ```bash
 python run_finetuning.py -c cfgs/finetune_injection.yaml \
@@ -82,10 +88,10 @@ raw backbone state dict first:
 
 ```bash
 python tools/export_dinov3_backbone.py \
-  --input /path/to/teacher_checkpoint.pth \
+  --input weights/dinov3/teacher_checkpoint.pth \
   --output weights/dinov3/dinov3_vitl16_oph_backbone.pth \
   --verify \
-  --dinov3_hub_repo external/dinov3
+  --dinov3_hub_repo third_party/dinov3
 ```
 
 ## Dataset
@@ -111,7 +117,7 @@ Default metadata columns:
 Prepare splits from the minimum zip:
 
 ```bash
-DATA_ZIP="/path/to/minimum dataset.zip" bash scripts/prepare_minimum_dataset.sh
+DATA_ZIP="data/minimum_dataset.zip" bash scripts/prepare_minimum_dataset.sh
 ```
 
 This creates:
@@ -139,17 +145,35 @@ python run_finetuning.py -c cfgs/finetune_diagnosis.yaml --dry_run
 python run_finetuning.py -c cfgs/finetune_biomarker.yaml --biomarker IRF --dry_run
 ```
 
+## Fresh Clone Checklist
+
+From a fresh clone, another user only needs to add local data and local weights:
+
+```text
+data/
+  minimum_dataset/
+    metadata.xlsx
+    A01/
+    A02/
+    splits/
+      train.csv
+      val.csv
+      test.csv
+weights/
+  dinov3/
+    dinov3_vitl16_oph_backbone.pth
+  tasks/
+    injection_best_model.pth
+    diagnosis_best_model.pth
+    biomarker_IRF_best_model.pth
+```
+
+The DINOv3 backbone code needed by VISTA is already present in
+`third_party/dinov3`.
+
 ## Fine-Tuning
 
 Injection decision:
-
-```bash
-DINOV3_REPO=external/dinov3 \
-DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
-bash scripts/finetune_injection.sh
-```
-
-When DINOv3 was installed with `pip install -e`, `DINOV3_REPO` can be omitted:
 
 ```bash
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
@@ -159,7 +183,6 @@ bash scripts/finetune_injection.sh
 Disease diagnosis:
 
 ```bash
-DINOV3_REPO=external/dinov3 \
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_diagnosis.sh
 ```
@@ -168,7 +191,6 @@ Biomarker recognition, for example `SRF`:
 
 ```bash
 BIOMARKER=SRF \
-DINOV3_REPO=external/dinov3 \
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_biomarker.sh
 ```
@@ -197,25 +219,23 @@ Set `CHECKPOINT` to a downstream `best_model.pth`:
 
 ```bash
 CHECKPOINT=outputs/injection/finetune/exp_xxx/models/best_model.pth \
-DINOV3_REPO=external/dinov3 \
 bash scripts/test_model.sh
 ```
 
 Use a different test config for diagnosis or biomarkers:
 
 ```bash
-CONFIG=cfgs/test_diagnosis.yaml CHECKPOINT=/path/to/best_model.pth bash scripts/test_model.sh
-CONFIG=cfgs/test_biomarker.yaml CHECKPOINT=/path/to/best_model.pth BIOMARKER=IRF bash scripts/test_model.sh
+CONFIG=cfgs/test_diagnosis.yaml CHECKPOINT=weights/tasks/diagnosis_best_model.pth bash scripts/test_model.sh
+CONFIG=cfgs/test_biomarker.yaml CHECKPOINT=weights/tasks/biomarker_IRF_best_model.pth BIOMARKER=IRF bash scripts/test_model.sh
 ```
 
 Or call the test script directly:
 
 ```bash
 python test_task_model.py -c cfgs/test_biomarker.yaml \
-  --checkpoint /path/to/best_model.pth \
+  --checkpoint weights/tasks/biomarker_IRF_best_model.pth \
   --biomarker IRF \
-  --table data/minimum_dataset/splits/test.csv \
-  --dinov3_hub_repo external/dinov3
+  --table data/minimum_dataset/splits/test.csv
 ```
 
 If a saved checkpoint contains the full downstream model state, `dinov3_weights`

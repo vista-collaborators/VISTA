@@ -3,12 +3,12 @@ set -euo pipefail
 
 CHECKPOINT="${CHECKPOINT:-}"
 CONFIG="${CONFIG:-cfgs/test_injection.yaml}"
-DINOV3_REPO="${DINOV3_REPO:-}"
+DINOV3_REPO="${DINOV3_REPO:-third_party/dinov3}"
 DINOV3_WEIGHTS="${DINOV3_WEIGHTS:-}"
 BIOMARKER="${BIOMARKER:-}"
 
 if [[ -z "${CHECKPOINT}" ]]; then
-  echo "Please set CHECKPOINT=/path/to/best_model.pth"
+  echo "Please set CHECKPOINT=weights/tasks/<task>_best_model.pth"
   exit 1
 fi
 

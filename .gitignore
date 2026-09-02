@@ -27,4 +27,5 @@ weights/**/*.pkl
 weights/**/*.safetensors
 
 external/
+third_party/dinov3_upstream/
 .DS_Store

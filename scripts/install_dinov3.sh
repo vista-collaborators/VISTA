@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DINOV3_REPO_URL="${DINOV3_REPO_URL:-https://github.com/facebookresearch/dinov3.git}"
-DINOV3_DIR="${DINOV3_DIR:-external/dinov3}"
+DINOV3_DIR="${DINOV3_DIR:-third_party/dinov3_upstream}"
 
 if [[ ! -d "${DINOV3_DIR}/.git" ]]; then
   mkdir -p "$(dirname "${DINOV3_DIR}")"

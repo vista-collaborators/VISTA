@@ -1,11 +1,16 @@
 import os
 import sys
+from pathlib import Path
 from typing import Any, List, Sequence, Tuple
 
 import torch
 import torch.nn as nn
 
 from .utils import extract_state_dict, strip_state_prefix, torch_load
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+VENDORED_DINOV3_ROOT = REPO_ROOT / "third_party" / "dinov3"
 
 
 class AttentionPooling(nn.Module):
@@ -63,20 +68,27 @@ def load_dinov3_backbone(
 
     def try_build(with_weights: bool) -> nn.Module:
         weight_arg = weights if with_weights else ""
-        if hub_repo and os.path.isdir(hub_repo):
+        candidate_repos = []
+        if hub_repo:
+            candidate_repos.append(hub_repo)
+        candidate_repos.append(str(VENDORED_DINOV3_ROOT))
+
+        for repo in candidate_repos:
+            if not repo or not os.path.isdir(repo):
+                continue
             try:
                 kwargs: dict[str, Any] = {"source": "local"}
                 if weight_arg:
                     kwargs["weights"] = weight_arg
                 else:
                     kwargs["pretrained"] = False
-                return torch.hub.load(hub_repo, hub_model, **kwargs)
+                return torch.hub.load(repo, hub_model, **kwargs)
             except Exception as exc:
-                errors.append(f"torch.hub local repo failed: {exc}")
+                errors.append(f"torch.hub local repo failed for {repo}: {exc}")
             try:
-                return _load_dinov3_direct(hub_repo, hub_model, weights=weight_arg)
+                return _load_dinov3_direct(repo, hub_model, weights=weight_arg)
             except Exception as exc:
-                errors.append(f"direct local repo import failed: {exc}")
+                errors.append(f"direct local repo import failed for {repo}: {exc}")
         try:
             return _load_dinov3_installed(hub_model, weights=weight_arg)
         except Exception as exc:
@@ -89,7 +101,7 @@ def load_dinov3_backbone(
         if not weights:
             raise RuntimeError(
                 "failed to build DINOv3. Run scripts/install_dinov3.sh, "
-                "pip install -e /path/to/dinov3, or pass --dinov3_hub_repo /path/to/dinov3. "
+                "pip install -e custom/dinov3, or pass --dinov3_hub_repo custom/dinov3. "
                 f"Details: {'; '.join(errors[-3:])}"
             )
 
@@ -98,8 +110,8 @@ def load_dinov3_backbone(
     except Exception as exc:
         raise RuntimeError(
             "failed to build a DINOv3 architecture for manual weight loading. "
-            "Run scripts/install_dinov3.sh, pip install -e /path/to/dinov3, "
-            "or pass --dinov3_hub_repo /path/to/dinov3."
+            "Run scripts/install_dinov3.sh, pip install -e custom/dinov3, "
+            "or pass --dinov3_hub_repo custom/dinov3."
         ) from exc
 
     checkpoint = torch_load(weights, map_location="cpu")

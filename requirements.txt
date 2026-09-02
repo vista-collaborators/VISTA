@@ -1,9 +1,9 @@
 torch
 torchvision
+numpy
 pandas
 openpyxl
 PyYAML
 Pillow
 
-# DINOv3 is installed separately because it is a research repository:
-# bash scripts/install_dinov3.sh
+# A filtered DINOv3 backbone runtime is vendored in third_party/dinov3.

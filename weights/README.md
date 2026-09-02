@@ -18,8 +18,7 @@ Pass actual paths at runtime:
 
 ```bash
 python run_finetuning.py -c cfgs/finetune_injection.yaml \
-  --dinov3_weights /path/to/dinov3_vitl16_oph_backbone.pth
+  --dinov3_weights weights/dinov3/dinov3_vitl16_oph_backbone.pth
 ```
 
-Install DINOv3 separately with `bash scripts/install_dinov3.sh` or
-`pip install -e /path/to/dinov3`.
+The filtered DINOv3 backbone runtime is vendored in `third_party/dinov3`.

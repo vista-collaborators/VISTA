@@ -12,10 +12,10 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from oph_dinov3_tasks.config import parse_configured_args
-from oph_dinov3_tasks.tasks import class_names_for_task, load_task_samples, normalize_task
-from oph_dinov3_tasks.trainer import DownstreamTrainer
-from oph_dinov3_tasks.utils import (
+from vista.config import parse_configured_args
+from vista.tasks import class_names_for_task, load_task_samples, normalize_task
+from vista.trainer import DownstreamTrainer
+from vista.utils import (
     ensure_dir,
     parse_bool_arg,
     parse_float_list,
@@ -85,14 +85,15 @@ def label_counts(samples: List[Dict[str, Any]], num_classes: int) -> List[int]:
     return counts
 
 
-def make_experiment_dir(args: argparse.Namespace, task: str, biomarker: str) -> str:
+def make_experiment_dir(args: argparse.Namespace, task: str, biomarker: str, create: bool) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     exp_name = args.run_name.strip() or f"exp_{timestamp}"
     parts = [args.output_root, task]
     if biomarker:
         parts.append(sanitize_name(biomarker))
     parts.extend([args.adaptation, exp_name])
-    return ensure_dir(os.path.join(*parts))
+    path = os.path.join(*parts)
+    return ensure_dir(path) if create else path
 
 
 def main() -> None:
@@ -152,7 +153,12 @@ def main() -> None:
         "val_table": args.val_table,
         "test_table": args.test_table,
         "output_root": args.output_root,
-        "experiment_dir": make_experiment_dir(args, task, args.biomarker if task == "biomarker" else ""),
+        "experiment_dir": make_experiment_dir(
+            args,
+            task,
+            args.biomarker if task == "biomarker" else "",
+            create=not args.dry_run,
+        ),
         "image_col": args.image_col,
         "label_col": label_col,
         "class_names": class_names,
@@ -196,12 +202,12 @@ def main() -> None:
         "test_class_counts": label_counts(test_samples, len(class_names)),
     }
 
-    write_json(os.path.join(config["experiment_dir"], "run_config.json"), config)
     print(json.dumps(config, ensure_ascii=False, indent=2))
     if args.dry_run:
-        print("Dry run finished: tables and config are valid; model construction was skipped.")
+        print("Dry run finished: tables and config are valid; no files were written.")
         return
 
+    write_json(os.path.join(config["experiment_dir"], "run_config.json"), config)
     trainer = DownstreamTrainer(config)
     summary = trainer.train(train_samples, val_samples, test_samples)
     write_json(os.path.join(config["experiment_dir"], "run_summary.json"), summary)

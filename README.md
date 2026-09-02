@@ -1,7 +1,9 @@
-# OPH DINOv3 Downstream Tasks
+# VISTA
 
-Minimal code for fine-tuning continued-pretraining DINOv3 OCT image weights on
-three downstream ophthalmology tasks:
+**Vision-based Intelligent System for Treatment of Anti-VEGF**
+
+VISTA is a minimal public-ready codebase for fine-tuning continued-pretraining
+DINOv3 OCT image weights on three downstream ophthalmology tasks:
 
 - Anti-VEGF injection decision: binary classification.
 - Disease diagnosis: default classes `nAMD`, `DME`, `RVO`.
@@ -9,7 +11,7 @@ three downstream ophthalmology tasks:
 
 This repository is structured after the lightweight style of Retina4IRD: configs
 live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
-`src/`, examples live in `examples/`, and weights are documented but not included.
+`src/`, and weights are documented but not included.
 
 ## Repository Layout
 
@@ -25,9 +27,8 @@ live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
 ├── run_finetuning.py
 ├── test_task_model.py
 ├── scripts/
-├── src/oph_dinov3_tasks/
+├── src/vista/
 ├── tools/
-├── examples/
 └── weights/
 ```
 
@@ -36,18 +37,28 @@ live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
 Create a fresh environment:
 
 ```bash
-conda create -n oph-dinov3 python=3.10 -y
-conda activate oph-dinov3
+conda create -n vista python=3.10 -y
+conda activate vista
 pip install -r requirements.txt
 pip install -e .
 ```
 
-DINOv3 itself is not vendored here. Clone or place a local DINOv3 repository and
-pass it with `--dinov3_hub_repo`:
+DINOv3 is an external dependency. Install it into the same environment:
 
 ```bash
-git clone https://github.com/facebookresearch/dinov3.git external/dinov3
+bash scripts/install_dinov3.sh
 ```
+
+The script clones `https://github.com/facebookresearch/dinov3.git` into
+`external/dinov3` and runs `pip install -e external/dinov3`. If you already have
+DINOv3 locally, you can use:
+
+```bash
+pip install -e /path/to/dinov3
+```
+
+After DINOv3 is installed, `--dinov3_hub_repo` may be left empty. You can still
+pass a local repo path explicitly when you prefer torch hub loading.
 
 ## Weights
 
@@ -63,7 +74,6 @@ At runtime, pass your local continued-pretraining DINOv3 backbone:
 
 ```bash
 python run_finetuning.py -c cfgs/finetune_injection.yaml \
-  --dinov3_hub_repo external/dinov3 \
   --dinov3_weights weights/dinov3/dinov3_vitl16_oph_backbone.pth
 ```
 
@@ -139,6 +149,13 @@ DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_injection.sh
 ```
 
+When DINOv3 was installed with `pip install -e`, `DINOV3_REPO` can be omitted:
+
+```bash
+DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
+bash scripts/finetune_injection.sh
+```
+
 Disease diagnosis:
 
 ```bash
@@ -202,8 +219,8 @@ python test_task_model.py -c cfgs/test_biomarker.yaml \
 ```
 
 If a saved checkpoint contains the full downstream model state, `dinov3_weights`
-may remain empty at test time; the DINOv3 repository path is still needed to
-instantiate the architecture before loading the saved state.
+may remain empty at test time; the DINOv3 code is still needed to instantiate
+the architecture before loading the saved state.
 
 ## Notes
 

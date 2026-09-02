@@ -39,55 +39,89 @@ def _load_dinov3_direct(repo_dir: str, model_name: str, weights: str = "") -> nn
     return builder(**kwargs)
 
 
+def _load_dinov3_installed(model_name: str, weights: str = "") -> nn.Module:
+    from dinov3.hub import backbones
+
+    builder = getattr(backbones, model_name)
+    kwargs: dict[str, Any] = {}
+    if weights:
+        kwargs["weights"] = weights
+    else:
+        kwargs["pretrained"] = False
+    return builder(**kwargs)
+
+
 def load_dinov3_backbone(
     hub_repo: str,
     hub_model: str,
     weights: str = "",
 ) -> nn.Module:
-    if not hub_repo or not os.path.isdir(hub_repo):
-        raise FileNotFoundError(
-            "DINOv3 repo dir not found. Clone DINOv3 and pass --dinov3_hub_repo."
-        )
     if weights and not os.path.isfile(weights):
         raise FileNotFoundError(f"DINOv3 weights not found: {weights}")
 
-    try:
-        kwargs: dict[str, Any] = {"source": "local"}
-        if weights:
-            kwargs["weights"] = weights
-        else:
-            kwargs["pretrained"] = False
-        return torch.hub.load(hub_repo, hub_model, **kwargs)
-    except Exception as hub_exc:
-        try:
-            return _load_dinov3_direct(hub_repo, hub_model, weights=weights)
-        except Exception as direct_exc:
-            if not weights:
-                raise RuntimeError(
-                    f"failed to build DINOv3 model from {hub_repo}: {hub_exc}; {direct_exc}"
-                ) from direct_exc
+    errors: List[str] = []
 
-        backbone = _load_dinov3_direct(hub_repo, hub_model, weights="")
-        checkpoint = torch_load(weights, map_location="cpu")
-        state_dict = extract_state_dict(checkpoint)
-        current = backbone.state_dict()
-        cleaned = {}
-        skipped_shape = 0
-        for key, value in state_dict.items():
-            if not torch.is_tensor(value):
-                continue
-            new_key = strip_state_prefix(key)
-            if new_key in current and value.shape != current[new_key].shape:
-                skipped_shape += 1
-                continue
-            cleaned[new_key] = value
-        msg = backbone.load_state_dict(cleaned, strict=False)
-        print(
-            "Loaded DINOv3 weights manually | "
-            f"missing={len(msg.missing_keys)} unexpected={len(msg.unexpected_keys)} "
-            f"skipped_shape={skipped_shape}"
-        )
-        return backbone
+    def try_build(with_weights: bool) -> nn.Module:
+        weight_arg = weights if with_weights else ""
+        if hub_repo and os.path.isdir(hub_repo):
+            try:
+                kwargs: dict[str, Any] = {"source": "local"}
+                if weight_arg:
+                    kwargs["weights"] = weight_arg
+                else:
+                    kwargs["pretrained"] = False
+                return torch.hub.load(hub_repo, hub_model, **kwargs)
+            except Exception as exc:
+                errors.append(f"torch.hub local repo failed: {exc}")
+            try:
+                return _load_dinov3_direct(hub_repo, hub_model, weights=weight_arg)
+            except Exception as exc:
+                errors.append(f"direct local repo import failed: {exc}")
+        try:
+            return _load_dinov3_installed(hub_model, weights=weight_arg)
+        except Exception as exc:
+            errors.append(f"installed dinov3 import failed: {exc}")
+        raise RuntimeError("; ".join(errors[-3:]))
+
+    try:
+        return try_build(with_weights=bool(weights))
+    except Exception:
+        if not weights:
+            raise RuntimeError(
+                "failed to build DINOv3. Run scripts/install_dinov3.sh, "
+                "pip install -e /path/to/dinov3, or pass --dinov3_hub_repo /path/to/dinov3. "
+                f"Details: {'; '.join(errors[-3:])}"
+            )
+
+    try:
+        backbone = try_build(with_weights=False)
+    except Exception as exc:
+        raise RuntimeError(
+            "failed to build a DINOv3 architecture for manual weight loading. "
+            "Run scripts/install_dinov3.sh, pip install -e /path/to/dinov3, "
+            "or pass --dinov3_hub_repo /path/to/dinov3."
+        ) from exc
+
+    checkpoint = torch_load(weights, map_location="cpu")
+    state_dict = extract_state_dict(checkpoint)
+    current = backbone.state_dict()
+    cleaned = {}
+    skipped_shape = 0
+    for key, value in state_dict.items():
+        if not torch.is_tensor(value):
+            continue
+        new_key = strip_state_prefix(key)
+        if new_key in current and value.shape != current[new_key].shape:
+            skipped_shape += 1
+            continue
+        cleaned[new_key] = value
+    msg = backbone.load_state_dict(cleaned, strict=False)
+    print(
+        "Loaded DINOv3 weights manually | "
+        f"missing={len(msg.missing_keys)} unexpected={len(msg.unexpected_keys)} "
+        f"skipped_shape={skipped_shape}"
+    )
+    return backbone
 
 
 class Dinov3MultiSliceClassifier(nn.Module):

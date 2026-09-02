@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "oph-dinov3-tasks"
+name = "vista-anti-vegf"
 version = "0.1.0"
-description = "Minimal DINOv3 downstream fine-tuning and evaluation code for ophthalmic OCT tasks."
+description = "VISTA: Vision-based Intelligent System for Treatment of Anti-VEGF."
 requires-python = ">=3.9"
 dependencies = [
   "torch",

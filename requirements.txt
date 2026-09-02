@@ -4,3 +4,6 @@ pandas
 openpyxl
 PyYAML
 Pillow
+
+# DINOv3 is installed separately because it is a research repository:
+# bash scripts/install_dinov3.sh

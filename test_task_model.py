@@ -12,10 +12,10 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from oph_dinov3_tasks.config import parse_configured_args
-from oph_dinov3_tasks.tasks import class_names_for_task, load_task_samples, normalize_task
-from oph_dinov3_tasks.trainer import evaluate_checkpoint
-from oph_dinov3_tasks.utils import (
+from vista.config import parse_configured_args
+from vista.tasks import class_names_for_task, load_task_samples, normalize_task
+from vista.trainer import evaluate_checkpoint
+from vista.utils import (
     parse_bool_arg,
     parse_int_list,
     parse_str_list,
@@ -27,7 +27,7 @@ from oph_dinov3_tasks.utils import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Evaluate a saved OPH DINOv3 downstream checkpoint."
+        description="Evaluate a saved VISTA downstream checkpoint."
     )
     parser.add_argument("--checkpoint", default="")
     parser.add_argument("--table", default="")

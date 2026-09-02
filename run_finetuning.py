@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 ROOT = Path(__file__).resolve().parent
-SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from vista.config import parse_configured_args
 from vista.tasks import class_names_for_task, load_task_samples, normalize_task
@@ -52,8 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow_missing_images", type=parse_bool_arg, default=False)
 
     parser.add_argument("--adaptation", default="finetune", choices=["lp", "finetune"])
-    parser.add_argument("--dinov3_hub_repo", default="")
-    parser.add_argument("--dinov3_hub_model", default="dinov3_vitl16")
+    parser.add_argument("--dinov3_model", default="dinov3_vitl16")
     parser.add_argument("--dinov3_weights", default="")
     parser.add_argument("--dinov3_feature_mode", default="avg_patch", choices=["avg_patch", "cls"])
 
@@ -173,8 +171,7 @@ def main() -> None:
         "input_size": int(args.input_size),
         "allow_missing_images": bool(args.allow_missing_images),
         "adaptation": args.adaptation,
-        "dinov3_hub_repo": args.dinov3_hub_repo,
-        "dinov3_hub_model": args.dinov3_hub_model,
+        "dinov3_model": args.dinov3_model,
         "dinov3_weights": args.dinov3_weights,
         "dinov3_feature_mode": args.dinov3_feature_mode,
         "batch_size": int(args.batch_size),

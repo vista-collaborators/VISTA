@@ -14,8 +14,7 @@ slice_indices: 5,7,9,11,13
 input_size: 224
 
 adaptation: finetune
-dinov3_hub_repo: third_party/dinov3
-dinov3_hub_model: dinov3_vitl16
+dinov3_model: dinov3_vitl16
 dinov3_weights: ""
 dinov3_feature_mode: avg_patch
 

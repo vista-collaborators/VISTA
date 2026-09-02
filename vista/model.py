@@ -1,16 +1,10 @@
 import os
-import sys
-from pathlib import Path
 from typing import Any, List, Sequence, Tuple
 
 import torch
 import torch.nn as nn
 
 from .utils import extract_state_dict, strip_state_prefix, torch_load
-
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-VENDORED_DINOV3_ROOT = REPO_ROOT / "third_party" / "dinov3"
 
 
 class AttentionPooling(nn.Module):
@@ -29,25 +23,21 @@ class AttentionPooling(nn.Module):
         return pooled, weights.squeeze(-1)
 
 
-def _load_dinov3_direct(repo_dir: str, model_name: str, weights: str = "") -> nn.Module:
-    repo_dir = os.path.abspath(repo_dir)
-    if repo_dir not in sys.path:
-        sys.path.insert(0, repo_dir)
-    from dinov3.hub import backbones
-
-    builder = getattr(backbones, model_name)
-    kwargs: dict[str, Any] = {}
-    if weights:
-        kwargs["weights"] = weights
-    else:
-        kwargs["pretrained"] = False
-    return builder(**kwargs)
+def _import_dinov3_backbones():
+    try:
+        from vista.dinov3.hub import backbones
+    except Exception as exc:
+        raise RuntimeError(
+            "cannot import DINOv3. Run `pip install -e .` from the VISTA root."
+        ) from exc
+    return backbones
 
 
-def _load_dinov3_installed(model_name: str, weights: str = "") -> nn.Module:
-    from dinov3.hub import backbones
-
-    builder = getattr(backbones, model_name)
+def _build_dinov3(dinov3_model: str, weights: str = "") -> nn.Module:
+    backbones = _import_dinov3_backbones()
+    builder = getattr(backbones, dinov3_model, None)
+    if builder is None:
+        raise ValueError(f"DINOv3 model not found: {dinov3_model}")
     kwargs: dict[str, Any] = {}
     if weights:
         kwargs["weights"] = weights
@@ -57,63 +47,27 @@ def _load_dinov3_installed(model_name: str, weights: str = "") -> nn.Module:
 
 
 def load_dinov3_backbone(
-    hub_repo: str,
-    hub_model: str,
+    dinov3_model: str,
     weights: str = "",
 ) -> nn.Module:
     if weights and not os.path.isfile(weights):
         raise FileNotFoundError(f"DINOv3 weights not found: {weights}")
 
-    errors: List[str] = []
-
-    def try_build(with_weights: bool) -> nn.Module:
-        weight_arg = weights if with_weights else ""
-        candidate_repos = []
-        if hub_repo:
-            candidate_repos.append(hub_repo)
-        candidate_repos.append(str(VENDORED_DINOV3_ROOT))
-
-        for repo in candidate_repos:
-            if not repo or not os.path.isdir(repo):
-                continue
-            try:
-                kwargs: dict[str, Any] = {"source": "local"}
-                if weight_arg:
-                    kwargs["weights"] = weight_arg
-                else:
-                    kwargs["pretrained"] = False
-                return torch.hub.load(repo, hub_model, **kwargs)
-            except Exception as exc:
-                errors.append(f"torch.hub local repo failed for {repo}: {exc}")
-            try:
-                return _load_dinov3_direct(repo, hub_model, weights=weight_arg)
-            except Exception as exc:
-                errors.append(f"direct local repo import failed for {repo}: {exc}")
-        try:
-            return _load_dinov3_installed(hub_model, weights=weight_arg)
-        except Exception as exc:
-            errors.append(f"installed dinov3 import failed: {exc}")
-        raise RuntimeError("; ".join(errors[-3:]))
-
     try:
-        return try_build(with_weights=bool(weights))
-    except Exception:
+        return _build_dinov3(dinov3_model=dinov3_model, weights=weights)
+    except Exception as first_exc:
         if not weights:
-            raise RuntimeError(
-                "failed to build DINOv3. Run scripts/install_dinov3.sh, "
-                "pip install -e custom/dinov3, or pass --dinov3_hub_repo custom/dinov3. "
-                f"Details: {'; '.join(errors[-3:])}"
-            )
+            raise
 
     try:
-        backbone = try_build(with_weights=False)
+        backbone = _build_dinov3(dinov3_model=dinov3_model, weights="")
     except Exception as exc:
         raise RuntimeError(
             "failed to build a DINOv3 architecture for manual weight loading. "
-            "Run scripts/install_dinov3.sh, pip install -e custom/dinov3, "
-            "or pass --dinov3_hub_repo custom/dinov3."
+            "Run `pip install -e .` from the VISTA root."
         ) from exc
 
+    print(f"DINOv3 builder could not load weights directly; falling back to manual load: {first_exc}")
     checkpoint = torch_load(weights, map_location="cpu")
     state_dict = extract_state_dict(checkpoint)
     current = backbone.state_dict()
@@ -142,8 +96,7 @@ class Dinov3MultiSliceClassifier(nn.Module):
         num_classes: int,
         num_slices: int,
         adaptation: str,
-        dinov3_hub_repo: str,
-        dinov3_hub_model: str = "dinov3_vitl16",
+        dinov3_model: str = "dinov3_vitl16",
         dinov3_weights: str = "",
         dinov3_feature_mode: str = "avg_patch",
         fusion_layers: int = 2,
@@ -160,8 +113,7 @@ class Dinov3MultiSliceClassifier(nn.Module):
             raise ValueError("adaptation must be lp or finetune")
 
         self.backbone = load_dinov3_backbone(
-            hub_repo=dinov3_hub_repo,
-            hub_model=dinov3_hub_model,
+            dinov3_model=dinov3_model,
             weights=dinov3_weights,
         )
         self.feature_dim = self._infer_feature_dim(self.backbone)
@@ -312,8 +264,7 @@ def build_model_from_config(config: dict[str, Any]) -> Dinov3MultiSliceClassifie
         num_classes=int(config["num_classes"]),
         num_slices=len(config["slice_indices"]),
         adaptation=config.get("adaptation", "finetune"),
-        dinov3_hub_repo=config.get("dinov3_hub_repo", ""),
-        dinov3_hub_model=config.get("dinov3_hub_model", "dinov3_vitl16"),
+        dinov3_model=config.get("dinov3_model", "dinov3_vitl16"),
         dinov3_weights=config.get("dinov3_weights", ""),
         dinov3_feature_mode=config.get("dinov3_feature_mode", "avg_patch"),
         fusion_layers=int(config.get("fusion_layers", 2)),

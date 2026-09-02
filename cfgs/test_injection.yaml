@@ -9,7 +9,7 @@ label_col: anti-VEGF injection
 image_ext: .jpg
 slice_indices: 5,7,9,11,13
 
-dinov3_hub_repo: third_party/dinov3
+dinov3_model: dinov3_vitl16
 dinov3_weights: ""
 batch_size: 16
 num_workers: 4

@@ -17,4 +17,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+include = ["vista*"]
+
+[tool.setuptools.package-data]
+"vista.dinov3" = ["LICENSE.md", "README.md"]

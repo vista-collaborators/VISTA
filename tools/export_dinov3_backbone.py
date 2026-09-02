@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import argparse
-import os
 import sys
 from pathlib import Path
 from typing import Dict
 
 import torch
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def parse_args() -> argparse.Namespace:
@@ -15,8 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, help="Continued-pretraining teacher checkpoint.")
     parser.add_argument("--output", required=True, help="Output raw backbone checkpoint.")
     parser.add_argument("--verify", action="store_true")
-    parser.add_argument("--dinov3_hub_repo", default="")
-    parser.add_argument("--dinov3_hub_model", default="dinov3_vitl16")
+    parser.add_argument("--dinov3_model", default="dinov3_vitl16")
     return parser.parse_args()
 
 
@@ -40,13 +42,8 @@ def extract_backbone_state_dict(checkpoint: object) -> Dict[str, torch.Tensor]:
     return backbone_state
 
 
-def verify_checkpoint(repo_dir: str, model_name: str, state_dict: Dict[str, torch.Tensor]) -> None:
-    if not repo_dir:
-        raise ValueError("--dinov3_hub_repo is required with --verify")
-    repo_dir = os.path.abspath(repo_dir)
-    if repo_dir not in sys.path:
-        sys.path.insert(0, repo_dir)
-    from dinov3.hub import backbones
+def verify_checkpoint(model_name: str, state_dict: Dict[str, torch.Tensor]) -> None:
+    from vista.dinov3.hub import backbones
 
     model = getattr(backbones, model_name)(pretrained=False)
     model.load_state_dict(state_dict, strict=True)
@@ -63,7 +60,7 @@ def main() -> None:
     print(f"Saved raw backbone checkpoint: {output}")
     print(f"Backbone tensors: {len(backbone_state)}")
     if args.verify:
-        verify_checkpoint(args.dinov3_hub_repo, args.dinov3_hub_model, backbone_state)
+        verify_checkpoint(args.dinov3_model, backbone_state)
 
 
 if __name__ == "__main__":

@@ -21,4 +21,5 @@ python run_finetuning.py -c cfgs/finetune_injection.yaml \
   --dinov3_weights weights/dinov3/dinov3_vitl16_oph_backbone.pth
 ```
 
-The filtered DINOv3 backbone runtime is vendored in `third_party/dinov3`.
+The DINOv3 backbone implementation used by VISTA is included under
+`vista/dinov3`; only model weights need to be provided locally.

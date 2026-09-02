@@ -6,4 +6,4 @@ openpyxl
 PyYAML
 Pillow
 
-# A filtered DINOv3 backbone runtime is vendored in third_party/dinov3.
+# The DINOv3 backbone runtime used by VISTA is included under vista/dinov3.

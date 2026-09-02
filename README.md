@@ -9,9 +9,9 @@ DINOv3 OCT image weights on three downstream ophthalmology tasks:
 - Disease diagnosis: default classes `nAMD`, `DME`, `RVO`.
 - Biomarker recognition: one binary classifier per biomarker, for example `IRF`.
 
-This repository is structured after the lightweight style of Retina4IRD: configs
-live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
-`src/`, and weights are documented but not included.
+This repository keeps the public codebase minimal: configs live in `cfgs/`,
+runnable scripts live in `scripts/`, VISTA code lives in `vista/`, and weights
+are documented but not included.
 
 ## Repository Layout
 
@@ -27,8 +27,13 @@ live in `cfgs/`, runnable scripts live in `scripts/`, reusable code lives in
 ├── run_finetuning.py
 ├── test_task_model.py
 ├── scripts/
-├── src/vista/
-├── third_party/dinov3/
+├── vista/
+│   ├── dinov3/
+│   ├── config.py
+│   ├── data.py
+│   ├── model.py
+│   ├── tasks.py
+│   └── trainer.py
 ├── tools/
 └── weights/
 ```
@@ -44,21 +49,12 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-This repository vendors the filtered DINOv3 backbone runtime under
-`third_party/dinov3`, so users do not need to clone DINOv3 separately for VISTA
-training or testing.
+VISTA includes the DINOv3 backbone implementation it needs under
+`vista/dinov3`. Users do not need to clone or install DINOv3 separately for
+normal VISTA training or testing.
 
-If you want to compare against a full upstream DINOv3 checkout instead of the
-vendored runtime, use:
-
-```bash
-bash scripts/install_dinov3.sh
-```
-
-The normal VISTA workflow does not require this optional step.
-
-The vendored DINOv3 code is distributed under its own license; see
-`third_party/dinov3/licenses/DINOV3_LICENSE.md`.
+The included DINOv3 code is distributed under its own license; see
+`vista/dinov3/LICENSE.md`.
 
 ## Weights
 
@@ -69,10 +65,10 @@ dinov3_weights: ""
 checkpoint: ""
 ```
 
-The provided configs use the relative vendored path:
+The provided configs select the DINOv3 architecture by name:
 
 ```yaml
-dinov3_hub_repo: third_party/dinov3
+dinov3_model: dinov3_vitl16
 ```
 
 At runtime, place your local continued-pretraining DINOv3 backbone under
@@ -91,7 +87,7 @@ python tools/export_dinov3_backbone.py \
   --input weights/dinov3/teacher_checkpoint.pth \
   --output weights/dinov3/dinov3_vitl16_oph_backbone.pth \
   --verify \
-  --dinov3_hub_repo third_party/dinov3
+  --dinov3_model dinov3_vitl16
 ```
 
 ## Dataset
@@ -168,8 +164,7 @@ weights/
     biomarker_IRF_best_model.pth
 ```
 
-The DINOv3 backbone code needed by VISTA is already present in
-`third_party/dinov3`.
+The DINOv3 backbone code needed by VISTA is already present in `vista/dinov3`.
 
 ## Fine-Tuning
 

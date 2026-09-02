@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parent
-SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from vista.config import parse_configured_args
 from vista.tasks import class_names_for_task, load_task_samples, normalize_task
@@ -48,8 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input_size", type=int, default=0)
     parser.add_argument("--allow_missing_images", type=parse_bool_arg, default=False)
 
-    parser.add_argument("--dinov3_hub_repo", default="")
-    parser.add_argument("--dinov3_hub_model", default="")
+    parser.add_argument("--dinov3_model", default="")
     parser.add_argument("--dinov3_weights", default="")
     parser.add_argument("--dinov3_feature_mode", default="")
     parser.add_argument("--batch_size", type=int, default=0)
@@ -127,8 +125,7 @@ def main() -> None:
         "slice_paths_col": args.slice_paths_col if args.slice_paths_col else saved_config.get("slice_paths_col", ""),
         "input_size": int(args.input_size or saved_config.get("input_size", 224)),
         "allow_missing_images": bool(args.allow_missing_images),
-        "dinov3_hub_repo": args.dinov3_hub_repo if args.dinov3_hub_repo else saved_config.get("dinov3_hub_repo", ""),
-        "dinov3_hub_model": args.dinov3_hub_model if args.dinov3_hub_model else saved_config.get("dinov3_hub_model", "dinov3_vitl16"),
+        "dinov3_model": args.dinov3_model if args.dinov3_model else saved_config.get("dinov3_model", "dinov3_vitl16"),
         "dinov3_weights": args.dinov3_weights if args.dinov3_weights else saved_config.get("dinov3_weights", ""),
         "dinov3_feature_mode": args.dinov3_feature_mode if args.dinov3_feature_mode else saved_config.get("dinov3_feature_mode", "avg_patch"),
         "batch_size": int(args.batch_size or saved_config.get("batch_size", 16)),

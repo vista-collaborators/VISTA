@@ -20,4 +20,4 @@ dependencies = [
 include = ["vista*"]
 
 [tool.setuptools.package-data]
-"vista.dinov3" = ["LICENSE.md", "README.md"]
+"vista.dinov3" = ["LICENSE.md"]

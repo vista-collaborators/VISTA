@@ -1,0 +1,30 @@
+task: diagnosis
+train_table: data/minimum_dataset/splits/train.csv
+val_table: data/minimum_dataset/splits/val.csv
+test_table: data/minimum_dataset/splits/test.csv
+output_root: outputs
+
+image_root: data/minimum_dataset
+image_col: OCT_pathway
+label_col: Diagnosis
+class_names: nAMD,DME,RVO
+image_ext: .jpg
+slice_indices: 5,7,9,11,13
+input_size: 224
+
+adaptation: finetune
+dinov3_hub_repo: ""
+dinov3_hub_model: dinov3_vitl16
+dinov3_weights: ""
+dinov3_feature_mode: avg_patch
+
+epochs: 50
+patience: 15
+batch_size: 16
+accumulation_steps: 1
+lr: 3.0e-6
+weight_decay: 1.0e-4
+num_workers: 4
+seed: 42
+aug_strength: default
+selection_metric: macro_f1

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oph-dinov3-tasks"
+version = "0.1.0"
+description = "Minimal DINOv3 downstream fine-tuning and evaluation code for ophthalmic OCT tasks."
+requires-python = ">=3.9"
+dependencies = [
+  "torch",
+  "torchvision",
+  "pandas",
+  "openpyxl",
+  "PyYAML",
+  "Pillow",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

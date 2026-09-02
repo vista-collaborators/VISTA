@@ -1,0 +1,16 @@
+task: diagnosis
+checkpoint: ""
+table: data/minimum_dataset/splits/test.csv
+output_dir: outputs/manual_test/diagnosis
+
+image_root: data/minimum_dataset
+image_col: OCT_pathway
+label_col: Diagnosis
+class_names: nAMD,DME,RVO
+image_ext: .jpg
+slice_indices: 5,7,9,11,13
+
+dinov3_hub_repo: ""
+dinov3_weights: ""
+batch_size: 16
+num_workers: 4

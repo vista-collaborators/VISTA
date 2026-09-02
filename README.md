@@ -2,30 +2,27 @@
 
 **Vision-based Intelligent System for Treatment of Anti-VEGF**
 
-VISTA is a minimal codebase for fine-tuning and testing DINOv3-based OCT image
-models on three ophthalmology tasks:
+VISTA 用于基于 DINOv3 的 OCT 图像模型微调与测试，支持三项任务：
 
-- Anti-VEGF injection decision
-- Disease diagnosis
-- Biomarker recognition
+- 抗 VEGF 打针决策
+- 疾病诊断
+- 生物标志物识别
 
-The DINOv3 backbone implementation required by VISTA is included inside
-`vista/dinov3/`. Model weights and datasets are not included.
-
-## Structure
+## 目录结构
 
 ```text
 .
-├── cfgs/                 # training and testing configs
-├── scripts/              # runnable shell scripts
-├── tools/                # dataset and weight preparation helpers
-├── vista/                # VISTA package, including vista/dinov3
-├── weights/              # local weights placeholder
+├── cfgs/
+├── scripts/
+├── tools/
+├── vista/
+│   └── dinov3/
+├── weights/
 ├── run_finetuning.py
 └── test_task_model.py
 ```
 
-## Installation
+## 环境配置
 
 ```bash
 conda create -n vista python=3.10 -y
@@ -34,9 +31,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## Data
-
-Expected minimum layout:
+## 数据结构
 
 ```text
 data/minimum_dataset/
@@ -52,7 +47,7 @@ data/minimum_dataset/
     test.csv
 ```
 
-Required metadata columns:
+`metadata.xlsx` 和 split CSV 需要包含：
 
 ```text
 OCT_pathway
@@ -61,16 +56,7 @@ Diagnosis
 IRF, SRF, SHRM, DRT, NV, PED
 ```
 
-Prepare splits from a zip file:
-
-```bash
-DATA_ZIP="data/minimum_dataset.zip" bash scripts/prepare_minimum_dataset.sh
-```
-
-## Weights
-
-Weights are intentionally not released in this repository. Put local weights
-under `weights/`, for example:
+## 权重路径
 
 ```text
 weights/
@@ -80,25 +66,7 @@ weights/
   tasks/biomarker_IRF_best_model.pth
 ```
 
-Config files keep weight fields empty by default:
-
-```yaml
-dinov3_model: dinov3_vitl16
-dinov3_weights: ""
-checkpoint: ""
-```
-
-## Validate Setup
-
-These commands check data/config parsing without training or writing outputs:
-
-```bash
-python run_finetuning.py -c cfgs/finetune_injection.yaml --dry_run
-python run_finetuning.py -c cfgs/finetune_diagnosis.yaml --dry_run
-python run_finetuning.py -c cfgs/finetune_biomarker.yaml --biomarker IRF --dry_run
-```
-
-## Fine-Tuning
+## 微调
 
 ```bash
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
@@ -112,7 +80,7 @@ DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_biomarker.sh
 ```
 
-## Testing
+## 测试
 
 ```bash
 CHECKPOINT=weights/tasks/injection_best_model.pth \
@@ -129,9 +97,15 @@ BIOMARKER=IRF \
 bash scripts/test_model.sh
 ```
 
-## Notes
+## 配置文件
 
-- All paths in configs are relative to the repository root.
-- Training outputs are written to `outputs/`, which is ignored by git.
-- DINOv3 code is included under `vista/dinov3/`; see
-  `vista/dinov3/LICENSE.md` for its license.
+```text
+cfgs/finetune_injection.yaml
+cfgs/finetune_diagnosis.yaml
+cfgs/finetune_biomarker.yaml
+cfgs/test_injection.yaml
+cfgs/test_diagnosis.yaml
+cfgs/test_biomarker.yaml
+```
+
+所有路径均相对于仓库根目录。

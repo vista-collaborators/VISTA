@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vista-anti-vegf"
+name = "vista"
 version = "0.1.0"
 description = "VISTA: Vision-based Intelligent System for Treatment of Anti-VEGF."
 requires-python = ">=3.9"

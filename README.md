@@ -2,45 +2,30 @@
 
 **Vision-based Intelligent System for Treatment of Anti-VEGF**
 
-VISTA is a minimal public-ready codebase for fine-tuning continued-pretraining
-DINOv3 OCT image weights on three downstream ophthalmology tasks:
+VISTA is a minimal codebase for fine-tuning and testing DINOv3-based OCT image
+models on three ophthalmology tasks:
 
-- Anti-VEGF injection decision: binary classification.
-- Disease diagnosis: default classes `nAMD`, `DME`, `RVO`.
-- Biomarker recognition: one binary classifier per biomarker, for example `IRF`.
+- Anti-VEGF injection decision
+- Disease diagnosis
+- Biomarker recognition
 
-This repository keeps the public codebase minimal: configs live in `cfgs/`,
-runnable scripts live in `scripts/`, VISTA code lives in `vista/`, and weights
-are documented but not included.
+The DINOv3 backbone implementation required by VISTA is included inside
+`vista/dinov3/`. Model weights and datasets are not included.
 
-## Repository Layout
+## Structure
 
 ```text
 .
-├── cfgs/
-│   ├── finetune_injection.yaml
-│   ├── finetune_diagnosis.yaml
-│   ├── finetune_biomarker.yaml
-│   ├── test_injection.yaml
-│   ├── test_diagnosis.yaml
-│   └── test_biomarker.yaml
+├── cfgs/                 # training and testing configs
+├── scripts/              # runnable shell scripts
+├── tools/                # dataset and weight preparation helpers
+├── vista/                # VISTA package, including vista/dinov3
+├── weights/              # local weights placeholder
 ├── run_finetuning.py
-├── test_task_model.py
-├── scripts/
-├── vista/
-│   ├── dinov3/
-│   ├── config.py
-│   ├── data.py
-│   ├── model.py
-│   ├── tasks.py
-│   └── trainer.py
-├── tools/
-└── weights/
+└── test_task_model.py
 ```
 
-## Environment
-
-Create a fresh environment:
+## Installation
 
 ```bash
 conda create -n vista python=3.10 -y
@@ -49,91 +34,63 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-VISTA includes the DINOv3 backbone implementation it needs under
-`vista/dinov3`. Users do not need to clone or install DINOv3 separately for
-normal VISTA training or testing.
+## Data
 
-The included DINOv3 code is distributed under its own license; see
-`vista/dinov3/LICENSE.md`.
-
-## Weights
-
-No weights are included. Config files intentionally leave weight fields blank:
-
-```yaml
-dinov3_weights: ""
-checkpoint: ""
-```
-
-The provided configs select the DINOv3 architecture by name:
-
-```yaml
-dinov3_model: dinov3_vitl16
-```
-
-At runtime, place your local continued-pretraining DINOv3 backbone under
-`weights/dinov3/` or pass another relative path:
-
-```bash
-python run_finetuning.py -c cfgs/finetune_injection.yaml \
-  --dinov3_weights weights/dinov3/dinov3_vitl16_oph_backbone.pth
-```
-
-If your continued-pretraining checkpoint is a DINOv3 teacher checkpoint, export a
-raw backbone state dict first:
-
-```bash
-python tools/export_dinov3_backbone.py \
-  --input weights/dinov3/teacher_checkpoint.pth \
-  --output weights/dinov3/dinov3_vitl16_oph_backbone.pth \
-  --verify \
-  --dinov3_model dinov3_vitl16
-```
-
-## Dataset
-
-The minimum dataset layout is:
-
-```text
-minimum_dataset/
-  metadata.xlsx
-  A01/5.jpg A01/7.jpg A01/9.jpg A01/11.jpg A01/13.jpg
-  A02/5.jpg A02/7.jpg A02/9.jpg A02/11.jpg A02/13.jpg
-```
-
-Default metadata columns:
-
-| Column | Meaning |
-| --- | --- |
-| `OCT_pathway` | OCT slice folder relative to dataset root |
-| `anti-VEGF injection` | injection label, `1` means need injection, `0/2` means no injection |
-| `Diagnosis` | disease label, default `nAMD/DME/RVO` |
-| `IRF`, `SRF`, `SHRM`, `DRT`, `NV`, `PED` | biomarker binary labels |
-
-Prepare splits from the minimum zip:
-
-```bash
-DATA_ZIP="data/minimum_dataset.zip" bash scripts/prepare_minimum_dataset.sh
-```
-
-This creates:
+Expected minimum layout:
 
 ```text
 data/minimum_dataset/
   metadata.xlsx
-  A01/
-  A02/
-  A03/
+  A01/5.jpg
+  A01/7.jpg
+  A01/9.jpg
+  A01/11.jpg
+  A01/13.jpg
   splits/
     train.csv
     val.csv
     test.csv
 ```
 
-For larger datasets you can provide your own `train.csv`, `val.csv`, and
-`test.csv` directly. The code also accepts `.xlsx` tables.
+Required metadata columns:
 
-Validate the split files without constructing DINOv3:
+```text
+OCT_pathway
+anti-VEGF injection
+Diagnosis
+IRF, SRF, SHRM, DRT, NV, PED
+```
+
+Prepare splits from a zip file:
+
+```bash
+DATA_ZIP="data/minimum_dataset.zip" bash scripts/prepare_minimum_dataset.sh
+```
+
+## Weights
+
+Weights are intentionally not released in this repository. Put local weights
+under `weights/`, for example:
+
+```text
+weights/
+  dinov3/dinov3_vitl16_oph_backbone.pth
+  tasks/injection_best_model.pth
+  tasks/diagnosis_best_model.pth
+  tasks/biomarker_IRF_best_model.pth
+```
+
+Config files keep weight fields empty by default:
+
+```yaml
+dinov3_model: dinov3_vitl16
+dinov3_weights: ""
+checkpoint: ""
+```
+
+## Validate Setup
+
+These commands check data/config parsing without training or writing outputs:
 
 ```bash
 python run_finetuning.py -c cfgs/finetune_injection.yaml --dry_run
@@ -141,107 +98,40 @@ python run_finetuning.py -c cfgs/finetune_diagnosis.yaml --dry_run
 python run_finetuning.py -c cfgs/finetune_biomarker.yaml --biomarker IRF --dry_run
 ```
 
-## Fresh Clone Checklist
-
-From a fresh clone, another user only needs to add local data and local weights:
-
-```text
-data/
-  minimum_dataset/
-    metadata.xlsx
-    A01/
-    A02/
-    splits/
-      train.csv
-      val.csv
-      test.csv
-weights/
-  dinov3/
-    dinov3_vitl16_oph_backbone.pth
-  tasks/
-    injection_best_model.pth
-    diagnosis_best_model.pth
-    biomarker_IRF_best_model.pth
-```
-
-The DINOv3 backbone code needed by VISTA is already present in `vista/dinov3`.
-
 ## Fine-Tuning
-
-Injection decision:
 
 ```bash
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_injection.sh
-```
 
-Disease diagnosis:
-
-```bash
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_diagnosis.sh
-```
 
-Biomarker recognition, for example `SRF`:
-
-```bash
-BIOMARKER=SRF \
+BIOMARKER=IRF \
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_biomarker.sh
 ```
 
-`adaptation` supports:
-
-- `lp`: freeze DINOv3 and train the slice-fusion module plus classifier head.
-- `finetune`: train DINOv3, fusion module, and classifier head.
-
-Each experiment writes:
-
-```text
-outputs/<task>/<adaptation>/exp_YYYYmmdd_HHMMSS/
-  run_config.json
-  run_summary.json
-  models/best_model.pth
-  logs/training_history.csv
-  reports/best_val_metrics.json
-  reports/val_predictions.csv
-  reports/test_predictions.csv
-```
-
-## Testing A Saved Model
-
-Set `CHECKPOINT` to a downstream `best_model.pth`:
+## Testing
 
 ```bash
-CHECKPOINT=outputs/injection/finetune/exp_xxx/models/best_model.pth \
+CHECKPOINT=weights/tasks/injection_best_model.pth \
+CONFIG=cfgs/test_injection.yaml \
+bash scripts/test_model.sh
+
+CHECKPOINT=weights/tasks/diagnosis_best_model.pth \
+CONFIG=cfgs/test_diagnosis.yaml \
+bash scripts/test_model.sh
+
+CHECKPOINT=weights/tasks/biomarker_IRF_best_model.pth \
+CONFIG=cfgs/test_biomarker.yaml \
+BIOMARKER=IRF \
 bash scripts/test_model.sh
 ```
 
-Use a different test config for diagnosis or biomarkers:
-
-```bash
-CONFIG=cfgs/test_diagnosis.yaml CHECKPOINT=weights/tasks/diagnosis_best_model.pth bash scripts/test_model.sh
-CONFIG=cfgs/test_biomarker.yaml CHECKPOINT=weights/tasks/biomarker_IRF_best_model.pth BIOMARKER=IRF bash scripts/test_model.sh
-```
-
-Or call the test script directly:
-
-```bash
-python test_task_model.py -c cfgs/test_biomarker.yaml \
-  --checkpoint weights/tasks/biomarker_IRF_best_model.pth \
-  --biomarker IRF \
-  --table data/minimum_dataset/splits/test.csv
-```
-
-If a saved checkpoint contains the full downstream model state, `dinov3_weights`
-may remain empty at test time; the DINOv3 code is still needed to instantiate
-the architecture before loading the saved state.
-
 ## Notes
 
-- This is a minimum public-ready codebase. Large experimental outputs, Slurm logs,
-  private absolute paths, and model weights are intentionally excluded.
-- The minimum example dataset is for structure validation only; use a real train,
-  validation, and test split for meaningful metrics.
-- If your metadata stores explicit slice paths, pass `--slice_paths_col slice_paths`
-  and separate paths with `|`, `;`, or `,`.
+- All paths in configs are relative to the repository root.
+- Training outputs are written to `outputs/`, which is ignored by git.
+- DINOv3 code is included under `vista/dinov3/`; see
+  `vista/dinov3/LICENSE.md` for its license.

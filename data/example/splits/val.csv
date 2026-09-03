@@ -1,0 +1,2 @@
+﻿patientID,sex,age,Diagnosis,Visual acuity,anti-VEGF injection,IRF,SRF,SHRM,DRT,NV,PED,OCT_pathway,image_path
+1,Male,57,nAMD,0.15,1,0,1,0,0,1,1,A01,A01

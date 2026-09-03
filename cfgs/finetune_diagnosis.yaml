@@ -1,10 +1,10 @@
 task: diagnosis
-train_table: data/minimum_dataset/splits/train.csv
-val_table: data/minimum_dataset/splits/val.csv
-test_table: data/minimum_dataset/splits/test.csv
+train_table: data/example/splits/train.csv
+val_table: data/example/splits/val.csv
+test_table: data/example/splits/test.csv
 output_root: outputs
 
-image_root: data/minimum_dataset
+image_root: data/example
 image_col: OCT_pathway
 label_col: Diagnosis
 class_names: nAMD,DME,RVO

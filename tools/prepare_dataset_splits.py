@@ -19,9 +19,9 @@ def parse_args() -> argparse.Namespace:
         description="Prepare train/val/test CSV files from OPH metadata."
     )
     parser.add_argument("--zip_path", default="", help="Optional dataset zip to extract first.")
-    parser.add_argument("--extract_dir", default="data/minimum_dataset")
+    parser.add_argument("--extract_dir", default="data/example")
     parser.add_argument("--metadata", default="", help="CSV/XLSX metadata path. Defaults to extracted metadata.xlsx.")
-    parser.add_argument("--output_dir", default="data/minimum_dataset/splits")
+    parser.add_argument("--output_dir", default="data/example/splits")
     parser.add_argument("--image_col", default="OCT_pathway")
     parser.add_argument("--split_col", default="split")
     parser.add_argument("--train_ratio", type=float, default=0.6)

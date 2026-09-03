@@ -2,10 +2,10 @@
 set -euo pipefail
 
 DATA_ZIP="${DATA_ZIP:-}"
-EXTRACT_DIR="${EXTRACT_DIR:-data/minimum_dataset}"
+EXTRACT_DIR="${EXTRACT_DIR:-data/example}"
 
 if [[ -z "${DATA_ZIP}" ]]; then
-  echo "Please set DATA_ZIP=data/minimum_dataset.zip"
+  echo "Please set DATA_ZIP=data/example.zip"
   exit 1
 fi
 

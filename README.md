@@ -13,6 +13,8 @@ VISTA 用于基于 DINOv3 的 OCT 图像模型微调与测试，支持三项任�
 ```text
 .
 ├── cfgs/
+├── data/
+│   └── example/
 ├── scripts/
 ├── tools/
 ├── vista/
@@ -34,7 +36,7 @@ pip install -e .
 ## 数据结构
 
 ```text
-data/minimum_dataset/
+data/example/
   metadata.xlsx
   A01/5.jpg
   A01/7.jpg

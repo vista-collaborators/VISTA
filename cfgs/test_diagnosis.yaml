@@ -1,9 +1,9 @@
 task: diagnosis
 checkpoint: ""
-table: data/minimum_dataset/splits/test.csv
+table: data/example/splits/test.csv
 output_dir: outputs/manual_test/diagnosis
 
-image_root: data/minimum_dataset
+image_root: data/example
 image_col: OCT_pathway
 label_col: Diagnosis
 class_names: nAMD,DME,RVO

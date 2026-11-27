@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 DINOV3_WEIGHTS="${DINOV3_WEIGHTS:-weights/dinov3/dinov3_vitl16_oph_backbone.pth}"

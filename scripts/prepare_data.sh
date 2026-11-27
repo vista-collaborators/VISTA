@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 DATA_ZIP="${DATA_ZIP:-}"

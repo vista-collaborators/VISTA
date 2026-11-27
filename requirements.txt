@@ -5,5 +5,3 @@ pandas
 openpyxl
 PyYAML
 Pillow
-
-# The DINOv3 backbone runtime used by VISTA is included under vista/dinov3.

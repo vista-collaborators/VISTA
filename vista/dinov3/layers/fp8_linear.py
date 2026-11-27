@@ -10,7 +10,6 @@ import torch
 from vista.dinov3.layers.attention import LinearKMaskedBias
 from vista.dinov3.utils import named_replace
 
-# avoid division by zero when calculating scale
 EPS = 1e-12
 
 
@@ -24,9 +23,6 @@ def scale(t, amax_t):
 def matmul(first, amax_first, second_t, amax_second_t, bias):
     first_fp8, scale_first = scale(first, amax_first)
     second_t_fp8, scale_second_t = scale(second_t, amax_second_t)
-    # PyTorch's row-wise scaled matmul kernel is based on CUTLASS and is quite
-    # slow. Hence we fall back to an "unscaled" matmul, which uses cuBLAS, and
-    # apply the scale manually afterwards.
     output = torch._scaled_mm(
         first_fp8,
         second_t_fp8.t(),
@@ -111,11 +107,6 @@ def convert_linears_to_fp8(root_module: torch.nn.Module, *, filter: str) -> torc
         else:
             assert False, str(type(module))
         if module.in_features % 64 != 0 or module.out_features % 64 != 0:
-            # This is not a strict requirement, but H100 TensorCores for fp8
-            # operate on tiles of 64 elements anyways, and Inductor sometimes
-            # pads inner dims to become multiples of 64. Also, if one day we
-            # switch back to cuBLAS, it artificially requires dims to be
-            # multiples of 16.
             raise RuntimeError(
                 "fp8 requires all dimensions to be multiples of 64 " "(consider using ffn_layer=swiglu64 or higher)"
             )
@@ -133,7 +124,6 @@ def convert_linears_to_fp8(root_module: torch.nn.Module, *, filter: str) -> torc
 
     out = named_replace(replace, root_module)
     assert total_count > 0, "fp8: no layer found to convert"
-    # Force re-compile everything
     torch._dynamo.reset_code_caches()
     from torch._inductor.cudagraph_trees import reset_cudagraph_trees
 

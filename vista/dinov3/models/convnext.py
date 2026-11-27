@@ -21,15 +21,14 @@ def drop_path(x: Tensor, drop_prob: float = 0.0, training: bool = False) -> Tens
     if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)
     random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-    random_tensor.floor_()  # binarize
+    random_tensor.floor_()
     output = x.div(keep_prob) * random_tensor
     return output
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     def __init__(self, drop_prob=None) -> None:
         super(DropPath, self).__init__()
@@ -40,24 +39,12 @@ class DropPath(nn.Module):
 
 
 class Block(nn.Module):
-    r"""ConvNeXt Block. There are two equivalent implementations:
-    (1) DwConv -> LayerNorm (channels_first) -> 1x1 Conv -> GELU -> 1x1 Conv; all in (N, C, H, W)
-    (2) DwConv -> Permute to (N, H, W, C); LayerNorm (channels_last) -> Linear -> GELU -> Linear; Permute back
-    We use (2) as we find it slightly faster in PyTorch
-
-    Args:
-        dim (int): Number of input channels.
-        drop_path (float): Stochastic depth rate. Default: 0.0
-        layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
-
-    Source: https://github.com/facebookresearch/ConvNeXt/blob/main/models/convnext.py
-    """
 
     def __init__(self, dim, drop_path=0.0, layer_scale_init_value=1e-6):
         super().__init__()
-        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)  # depthwise conv
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)
         self.norm = LayerNorm(dim, eps=1e-6)
-        self.pwconv1 = nn.Linear(dim, 4 * dim)  # pointwise/1x1 convs, implemented with linear layers
+        self.pwconv1 = nn.Linear(dim, 4 * dim)
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(4 * dim, dim)
         self.layer_scale_init_value = layer_scale_init_value
@@ -71,27 +58,20 @@ class Block(nn.Module):
     def forward(self, x):
         input = x
         x = self.dwconv(x)
-        x = x.permute(0, 2, 3, 1)  # (N, C, H, W) -> (N, H, W, C)
+        x = x.permute(0, 2, 3, 1)
         x = self.norm(x)
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
         if self.gamma is not None:
             x = self.gamma * x
-        x = x.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
+        x = x.permute(0, 3, 1, 2)
 
         x = input + self.drop_path(x)
         return x
 
 
 class LayerNorm(nn.Module):
-    r"""LayerNorm that supports two data formats: channels_last (default) or channels_first.
-    The ordering of the dimensions in the inputs. channels_last corresponds to inputs with
-    shape (batch_size, height, width, channels) while channels_first corresponds to inputs
-    with shape (batch_size, channels, height, width).
-
-    Source: https://github.com/facebookresearch/ConvNeXt/blob/main/models/convnext.py
-    """
 
     def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
         super().__init__()
@@ -119,31 +99,14 @@ class LayerNorm(nn.Module):
 
 
 class ConvNeXt(nn.Module):
-    r"""
-    Code adapted from https://github.com/facebookresearch/ConvNeXt/blob/main/models/convnext.pyConvNeXt
-
-    A PyTorch impl of : `A ConvNet for the 2020s`  -
-        https://arxiv.org/pdf/2201.03545.pdf
-
-    Args:
-        in_chans (int): Number of input image channels. Default: 3
-        num_classes (int): Number of classes for classification head. Default: 1000
-        depths (tuple(int)): Number of blocks at each stage. Default: [3, 3, 9, 3]
-        dims (int): Feature dimension at each stage. Default: [96, 192, 384, 768]
-        drop_path_rate (float): Stochastic depth rate. Default: 0.
-        layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
-        patch_size (int | None): Pseudo patch size. Used to resize feature maps to those of a ViT with a given patch size. If None, no resizing is performed
-    """
 
     def __init__(
         self,
-        # original ConvNeXt arguments
         in_chans: int = 3,
         depths: List[int] = [3, 3, 9, 3],
         dims: List[int] = [96, 192, 384, 768],
         drop_path_rate: float = 0.0,
         layer_scale_init_value: float = 1e-6,
-        # DINO arguments
         patch_size: int | None = None,
         **ignored_kwargs,
     ):
@@ -152,8 +115,7 @@ class ConvNeXt(nn.Module):
             logger.warning(f"Ignored kwargs: {ignored_kwargs}")
         del ignored_kwargs
 
-        # ==== ConvNeXt's original init =====
-        self.downsample_layers = nn.ModuleList()  # stem and 3 intermediate downsampling conv layers
+        self.downsample_layers = nn.ModuleList()
         stem = nn.Sequential(
             nn.Conv2d(in_chans, dims[0], kernel_size=4, stride=4),
             LayerNorm(dims[0], eps=1e-6, data_format="channels_first"),
@@ -166,7 +128,7 @@ class ConvNeXt(nn.Module):
             )
             self.downsample_layers.append(downsample_layer)
 
-        self.stages = nn.ModuleList()  # 4 feature resolution stages, each consisting of multiple residual blocks
+        self.stages = nn.ModuleList()
         dp_rates = [x for x in np.linspace(0, drop_path_rate, sum(depths))]
         cur = 0
         for i in range(4):
@@ -179,22 +141,20 @@ class ConvNeXt(nn.Module):
             self.stages.append(stage)
             cur += depths[i]
 
-        self.norm = nn.LayerNorm(dims[-1], eps=1e-6)  # final norm layer
-        # ==== End of ConvNeXt's original init =====
+        self.norm = nn.LayerNorm(dims[-1], eps=1e-6)
 
-        # ==== DINO adaptation ====
-        self.head = nn.Identity()  # remove classification head
+        self.head = nn.Identity()
         self.embed_dim = dims[-1]
-        self.embed_dims = dims  # per layer dimensions
-        self.n_blocks = len(self.downsample_layers)  # 4
+        self.embed_dims = dims
+        self.n_blocks = len(self.downsample_layers)
         self.chunked_blocks = False
-        self.n_storage_tokens = 0  # no registers
+        self.n_storage_tokens = 0
 
         self.norms = nn.ModuleList([nn.Identity() for i in range(3)])
         self.norms.append(self.norm)
 
         self.patch_size = patch_size
-        self.input_pad_size = 4  # first convolution with kernel_size = 4, stride = 4
+        self.input_pad_size = 4
 
     def init_weights(self):
         self.apply(self._init_weights)
@@ -227,10 +187,9 @@ class ConvNeXt(nn.Module):
             for i in range(4):
                 x = self.downsample_layers[i](x)
                 x = self.stages[i](x)
-            x_pool = x.mean([-2, -1])  # global average pooling, (N, C, H, W) -> (N, C)
+            x_pool = x.mean([-2, -1])
             x = torch.flatten(x, 2).transpose(1, 2)
 
-            # concat [CLS] and patch tokens as (N, HW + 1, C), then normalize
             x_norm = self.norm(torch.cat([x_pool.unsqueeze(1), x], dim=1))
             output.append(
                 {
@@ -262,7 +221,6 @@ class ConvNeXt(nn.Module):
                 x_pool = x.mean([-2, -1])
                 x_patches = x
                 if self.patch_size is not None:
-                    # Resize output feature maps to that of a ViT with given patch_size
                     x_patches = nn.functional.interpolate(
                         x,
                         size=(h // self.patch_size, w // self.patch_size),
@@ -271,8 +229,8 @@ class ConvNeXt(nn.Module):
                     )
                 output.append(
                     [
-                        x_pool,  # CLS (B x C)
-                        x_patches,  # B x C x H x W
+                        x_pool,
+                        x_patches,
                     ]
                 )
         assert len(output) == len(blocks_to_take), f"only {len(output)} / {len(blocks_to_take)} blocks found"
@@ -281,7 +239,7 @@ class ConvNeXt(nn.Module):
     def get_intermediate_layers(
         self,
         x,
-        n: Union[int, Sequence] = 1,  # Layers or n last layers to take,
+        n: Union[int, Sequence] = 1,
         reshape: bool = False,
         return_class_token: bool = False,
         norm: bool = True,
@@ -296,8 +254,8 @@ class ConvNeXt(nn.Module):
                 norms = [self.norms[i] for i in n]
             outputs = [
                 (
-                    norm(cls_token),  # N x C
-                    norm(patches.flatten(-2, -1).permute(0, 2, 1)),  # N x HW x C
+                    norm(cls_token),
+                    norm(patches.flatten(-2, -1).permute(0, 2, 1)),
                 )
                 for (cls_token, patches), norm in zip(outputs, norms)
             ]
@@ -307,7 +265,6 @@ class ConvNeXt(nn.Module):
                     for (cls_token, patches), nchw in zip(outputs, nchw_shapes)
                 ]
         elif not reshape:
-            # force B x N x C format for patch tokens
             outputs = [(cls_token, patches.flatten(-2, -1).permute(0, 2, 1)) for (cls_token, patches) in outputs]
         class_tokens = [out[0] for out in outputs]
         outputs = [out[1] for out in outputs]

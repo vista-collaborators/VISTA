@@ -2,13 +2,13 @@
 
 **Vision-based Intelligent System for Treatment of Anti-VEGF**
 
-VISTA 用于基于 DINOv3 的 OCT 图像模型微调与测试，支持三项任务：
+VISTA supports fine-tuning and evaluation of DINOv3-based OCT image models for three tasks:
 
-- 抗 VEGF 打针决策
-- 疾病诊断
-- 生物标志物识别
+- Anti-VEGF injection decision support
+- Disease diagnosis
+- Biomarker detection
 
-## 目录结构
+## Repository Structure
 
 ```text
 .
@@ -24,7 +24,7 @@ VISTA 用于基于 DINOv3 的 OCT 图像模型微调与测试，支持三项任�
 └── test_task_model.py
 ```
 
-## 环境配置
+## Environment Setup
 
 ```bash
 conda create -n vista python=3.10 -y
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## 数据结构
+## Data Structure
 
 ```text
 data/example/
@@ -49,7 +49,7 @@ data/example/
     test.csv
 ```
 
-`metadata.xlsx` 和 split CSV 需要包含：
+`metadata.xlsx` and the split CSV files must include the following columns:
 
 ```text
 OCT_pathway
@@ -58,7 +58,7 @@ Diagnosis
 IRF, SRF, SHRM, DRT, NV, PED
 ```
 
-## 权重路径
+## Model Weight Paths
 
 ```text
 weights/
@@ -68,7 +68,7 @@ weights/
   tasks/biomarker_IRF_best_model.pth
 ```
 
-## 微调
+## Fine-tuning
 
 ```bash
 DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
@@ -82,7 +82,7 @@ DINOV3_WEIGHTS=weights/dinov3/dinov3_vitl16_oph_backbone.pth \
 bash scripts/finetune_biomarker.sh
 ```
 
-## 测试
+## Evaluation
 
 ```bash
 CHECKPOINT=weights/tasks/injection_best_model.pth \
@@ -99,7 +99,7 @@ BIOMARKER=IRF \
 bash scripts/test_model.sh
 ```
 
-## 配置文件
+## Configuration Files
 
 ```text
 cfgs/finetune_injection.yaml
@@ -110,4 +110,4 @@ cfgs/test_diagnosis.yaml
 cfgs/test_biomarker.yaml
 ```
 
-所有路径均相对于仓库根目录。
+All paths are relative to the repository root.

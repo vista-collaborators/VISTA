@@ -96,7 +96,7 @@ class DinoVisionTransformer(nn.Module):
 
         norm_layer_cls = norm_layer_dict[norm_layer]
 
-        self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
+        self.num_features = self.embed_dim = embed_dim
         self.n_blocks = depth
         self.num_heads = num_heads
         self.patch_size = patch_size
@@ -159,20 +159,16 @@ class DinoVisionTransformer(nn.Module):
         self.chunked_blocks = False
         self.blocks = nn.ModuleList(blocks_list)
 
-        # This norm is applied to everything, or when untying, to patch and mask tokens.
         self.norm = norm_layer_cls(embed_dim)
 
         self.untie_cls_and_patch_norms = untie_cls_and_patch_norms
         if untie_cls_and_patch_norms:
-            # When untying, this norm is applied to CLS tokens and registers.
             self.cls_norm = norm_layer_cls(embed_dim)
         else:
             self.cls_norm = None
 
         self.untie_global_and_local_cls_norm = untie_global_and_local_cls_norm
         if untie_global_and_local_cls_norm:
-            # When untying, this norm is applied to local CLS tokens and registers.
-            # This norm is never used during eval.
             self.local_cls_norm = norm_layer_cls(embed_dim)
         else:
             self.local_cls_norm = None
@@ -237,8 +233,6 @@ class DinoVisionTransformer(nn.Module):
         for idx, (x, masks) in enumerate(zip(all_x, masks_list)):
             if self.untie_cls_and_patch_norms or self.untie_global_and_local_cls_norm:
                 if self.untie_global_and_local_cls_norm and self.training and idx == 1:
-                    # Assume second entry of list corresponds to local crops.
-                    # We only ever apply this during training.
                     x_norm_cls_reg = self.local_cls_norm(x[:, : self.n_storage_tokens + 1])
                 elif self.untie_cls_and_patch_norms:
                     x_norm_cls_reg = self.cls_norm(x[:, : self.n_storage_tokens + 1])
@@ -268,7 +262,6 @@ class DinoVisionTransformer(nn.Module):
 
     def _get_intermediate_layers_not_chunked(self, x: Tensor, n: int = 1) -> List[Tensor]:
         x, (H, W) = self.prepare_tokens_with_masks(x)
-        # If n is an int, take the n last blocks. If it's a list, take them
         output, total_block_len = [], len(self.blocks)
         blocks_to_take = range(total_block_len - n, total_block_len) if isinstance(n, int) else n
         for i, blk in enumerate(self.blocks):
@@ -286,7 +279,7 @@ class DinoVisionTransformer(nn.Module):
         self,
         x: torch.Tensor,
         *,
-        n: Union[int, Sequence] = 1,  # Layers or n last layers to take
+        n: Union[int, Sequence] = 1,
         reshape: bool = False,
         return_class_token: bool = False,
         return_extra_tokens: bool = False,
@@ -390,9 +383,6 @@ def vit_huge2(patch_size=16, **kwargs):
 
 
 def vit_giant2(patch_size=16, **kwargs):
-    """
-    Close to ViT-giant, with embed-dim 1536 and 24 heads => embed-dim per head 64
-    """
     model = DinoVisionTransformer(
         patch_size=patch_size,
         embed_dim=1536,

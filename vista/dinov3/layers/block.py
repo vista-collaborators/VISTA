@@ -12,7 +12,7 @@ from vista.dinov3.utils import cat_keep_shapes, uncat_with_shapes
 
 from .attention import CausalSelfAttention, SelfAttention
 from .ffn_layers import Mlp
-from .layer_scale import LayerScale  # , DropPath
+from .layer_scale import LayerScale
 
 torch._dynamo.config.automatic_dynamic_shapes = False
 torch._dynamo.config.accumulated_cache_size_limit = 1024
@@ -39,7 +39,6 @@ class SelfAttentionBlock(nn.Module):
         device=None,
     ) -> None:
         super().__init__()
-        # print(f"biases: qkv: {qkv_bias}, proj: {proj_bias}, ffn: {ffn_bias}")
         self.norm1 = norm_layer(dim)
         self.attn = attn_class(
             dim,
@@ -75,17 +74,11 @@ class SelfAttentionBlock(nn.Module):
         sin, cos = rope
         assert sin.ndim == cos.ndim
         if sin.ndim == 4:
-            # If the rope embedding has a batch dimension (is different for each batch element), index into it
-            return sin[indices], cos[indices]  # [batch, heads, patches, embed_dim]
+            return sin[indices], cos[indices]
         else:
-            # No batch dimension, do not index
-            return sin, cos  # [heads, patches, embed_dim] or [patches, embed_dim]
+            return sin, cos
 
     def _forward(self, x: Tensor, rope=None) -> Tensor:
-        """
-        This is the reference implementation for a single tensor, matching what is done below for a list.
-        We call the list op on [x] instead of this function.
-        """
         b, _, _ = x.shape
         sample_subset_size = max(int(b * (1 - self.sample_drop_ratio)), 1)
         residual_scale_factor = b / sample_subset_size
@@ -124,11 +117,6 @@ class SelfAttentionBlock(nn.Module):
         return x_ffn
 
     def _forward_list(self, x_list: List[Tensor], rope_list=None) -> List[Tensor]:
-        """
-        This list operator concatenates the tokens from the list of inputs together to save
-        on the elementwise operations. Torch-compile memory-planning allows hiding the overhead
-        related to concat ops.
-        """
         b_list = [x.shape[0] for x in x_list]
         sample_subset_sizes = [max(int(b * (1 - self.sample_drop_ratio)), 1) for b in b_list]
         residual_scale_factors = [b / sample_subset_size for b, sample_subset_size in zip(b_list, sample_subset_sizes)]
@@ -199,14 +187,10 @@ class SelfAttentionBlock(nn.Module):
 
     def forward(self, x_or_x_list, rope_or_rope_list=None) -> List[Tensor]:
         if isinstance(x_or_x_list, Tensor):
-            # for reference:
-            # return self._forward(x_or_x_list, rope=rope_or_rope_list)
-            # in order to match implementations we call the list op:
             return self._forward_list([x_or_x_list], rope_list=[rope_or_rope_list])[0]
         elif isinstance(x_or_x_list, list):
             if rope_or_rope_list is None:
                 rope_or_rope_list = [None for x in x_or_x_list]
-            # return [self._forward(x, rope=rope) for x, rope in zip(x_or_x_list, rope_or_rope_list)]
             return self._forward_list(x_or_x_list, rope_list=rope_or_rope_list)
         else:
             raise AssertionError

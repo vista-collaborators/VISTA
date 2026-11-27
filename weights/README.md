@@ -7,9 +7,9 @@ Expected local layout:
 ```text
 weights/
   dinov3/
-    dinov3_vitl16_oph_backbone.pth      # optional continued-pretraining backbone
+    dinov3_vitl16_oph_backbone.pth
   tasks/
-    injection_best_model.pth            # optional downstream checkpoint
+    injection_best_model.pth
     diagnosis_best_model.pth
     biomarker_IRF_best_model.pth
 ```

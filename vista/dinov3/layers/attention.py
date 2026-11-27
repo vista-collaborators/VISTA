@@ -12,18 +12,12 @@ from vista.dinov3.utils import cat_keep_shapes, uncat_with_shapes
 from torch import Tensor, nn
 
 
-# RoPE-related functions:
 def rope_rotate_half(x: Tensor) -> Tensor:
-    # x:   [ x0  x1  x2  x3  x4  x5]
-    # out: [-x3 -x4 -x5  x0  x1  x2]
     x1, x2 = x.chunk(2, dim=-1)
     return torch.cat([-x2, x1], dim=-1)
 
 
 def rope_apply(x: Tensor, sin: Tensor, cos: Tensor) -> Tensor:
-    # x:   [..., D], eg [x0,     x1,   x2,   x3,   x4,   x5]
-    # sin: [..., D], eg [sin0, sin1, sin2, sin0, sin1, sin2]
-    # cos: [..., D], eg [cos0, cos1, cos2, cos0, cos1, cos2]
     return (x * cos) + (rope_rotate_half(x) * sin)
 
 
@@ -64,7 +58,6 @@ class SelfAttention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
 
     def apply_rope(self, q: Tensor, k: Tensor, rope: Tensor | Tuple[Tensor, Tensor]) -> Tuple[Tensor, Tensor]:
-        # All operations will use the dtype of rope, the output is cast back to the dtype of q and k
         q_dtype = q.dtype
         k_dtype = k.dtype
         sin, cos = rope
@@ -75,11 +68,11 @@ class SelfAttention(nn.Module):
         prefix = N - sin.shape[-2]
         assert prefix >= 0
         q_prefix = q[:, :, :prefix, :]
-        q = rope_apply(q[:, :, prefix:, :], sin, cos)  # [B, head, hw, D//head]
-        q = torch.cat((q_prefix, q), dim=-2)  # [B, head, N, D//head]
+        q = rope_apply(q[:, :, prefix:, :], sin, cos)
+        q = torch.cat((q_prefix, q), dim=-2)
         k_prefix = k[:, :, :prefix, :]
-        k = rope_apply(k[:, :, prefix:, :], sin, cos)  # [B, head, hw, D//head]
-        k = torch.cat((k_prefix, k), dim=-2)  # [B, head, N, D//head]
+        k = rope_apply(k[:, :, prefix:, :], sin, cos)
+        k = torch.cat((k_prefix, k), dim=-2)
         q = q.to(dtype=q_dtype)
         k = k.to(dtype=k_dtype)
         return q, k
@@ -92,7 +85,7 @@ class SelfAttention(nn.Module):
         return x
 
     def forward_list(self, x_list, attn_bias=None, rope_list=None) -> List[Tensor]:
-        assert len(x_list) == len(rope_list)  # should be enforced by the Block
+        assert len(x_list) == len(rope_list)
         x_flat, shapes, num_tokens = cat_keep_shapes(x_list)
         qkv_flat = self.qkv(x_flat)
         qkv_list = uncat_with_shapes(qkv_flat, shapes, num_tokens)

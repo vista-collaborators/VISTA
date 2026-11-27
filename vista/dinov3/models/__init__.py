@@ -24,10 +24,6 @@ def init_fp8(model: nn.Module, args) -> nn.Module:
         logger.info("fp8 matmuls: OFF (disabled in config)")
         return model
     logger.info("fp8 matmuls: ON")
-    # Multi-kernel makes Inductor auto-tune between a regular "streaming"-based
-    # reduction kernel and a "persistent" reduction kernel. Since fp8 has some
-    # multi-pass steps (e.g., first get amax, then scale), persistent kernels
-    # should perform better.
     torch._inductor.config.triton.multi_kernel = 1
     return convert_linears_to_fp8(model, filter=args.fp8_filter)
 
@@ -99,7 +95,7 @@ def build_model_from_cfg(cfg, only_teacher: bool = False):
 def build_model_for_eval(
     config,
     pretrained_weights: Union[str, Path] | None,
-    shard_unsharded_model: bool = False,  # If the model is not sharded, shard it. No effect if already sharded on disk
+    shard_unsharded_model: bool = False,
 ):
     model, _ = build_model_from_cfg(config, only_teacher=True)
     if pretrained_weights is None or pretrained_weights == "":
@@ -111,18 +107,14 @@ def build_model_for_eval(
         from vista.dinov3.fsdp.ac_compile_parallelize import ac_compile_parallelize
 
         moduledict = nn.ModuleDict({"backbone": model})
-        # Wrap with FSDP
         ac_compile_parallelize(moduledict, inference_only_models=[], cfg=config)
-        # Move to CUDA
         model.to_empty(device="cuda")
-        # Load checkpoint
         load_checkpoint(pretrained_weights, model=moduledict, strict_loading=True)
         shard_unsharded_model = False
     else:
         logger.info("PyTorch consolidated checkpoint")
         from vista.dinov3.checkpointer import init_model_from_checkpoint_for_evals
 
-        # consolidated checkpoint codepath
         model.to_empty(device="cuda")
         init_model_from_checkpoint_for_evals(model, pretrained_weights, "teacher")
     if shard_unsharded_model:

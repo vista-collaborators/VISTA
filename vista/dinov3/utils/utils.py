@@ -79,9 +79,6 @@ def named_apply(
 
 
 def fix_random_seeds(seed: int = 31):
-    """
-    Fix random seeds.
-    """
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
